@@ -1,4 +1,4 @@
-# Version 1.0 developed by Ramses Salcedo
+# Version 1.1 developed by Ramses Salcedo
 # Questions? Add me on Discord at Alyx#7777
 
 import collections
