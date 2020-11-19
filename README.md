@@ -20,7 +20,9 @@ xyz also uses a number of dependencies which can be installed by running the com
 pip install -r requirements.txt
 ```
 
-Lastly, change the API and webhook links from the .py file to your own. For the DDoS commands, I have them labeled as 'DISCORD URL FOR LOGGER GOES HERE' and 'API LINK GOES HERE.' For the web tools, grab you c99 API key and change where it says 'YOUR API KEY.'
+Lastly, change the API and webhook info found at the top of the .py file.
+
+![Setup](https://i.imgur.com/wPm4P1Z.png)
 
 ### Commands
 
