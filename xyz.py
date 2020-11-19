@@ -206,7 +206,7 @@ async def profile(message):
         embed.add_field(name="ID:", value=f"{message.author.id}", inline=False)
         embed.set_footer(text="Developed by Alyx#7777")
         await message.send(embed=embed)
-ait ctx.send(embed=plan, file=file) 
+        await ctx.send(embed=plan, file=file) 
 
 @bot.event
 async def on_ready():
