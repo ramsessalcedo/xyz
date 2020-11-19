@@ -32,7 +32,7 @@ Below you will find a list of commands available in xyz. New commands are always
 
 ```sh
 $attacktut - Gives the information below in any channel
-$attack [host] [port] [time] [method] - Launches DDoS attack
+$attack [method] [ip] [time] [port] - Launches DDoS attack
 ```
 > **Note:** This is meant for education purposes only. The methods available depend entirely on your API.
 
@@ -41,7 +41,7 @@ $attack [host] [port] [time] [method] - Launches DDoS attack
 $portscan [ip] - Scans all ports of given host
 $ping [ip] - Pings a host 4 times and shows the result
 $geoip [ip] - Locates the given host/ip address
-$geninfo [sex] - Generates random name address etc. (genders: male/female/all)
+$geninfo [gender] - Generates random name address etc. (genders: male/female/all)
 $checkweb [url] - Checks if a host is up or down
 $ip2domain [ip] - Attempts to find websites hosted on the specific IP address
 $phonelookup [areacode] + [number] - Get more information about any phone number
